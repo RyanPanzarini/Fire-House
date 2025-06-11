@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fire House Club | Plataforma Fire House</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom styles */
+        .bg-fantasy {
+            background-image: url('https://images.unsplash.com/photo-1605106702734-205df224ecce?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+        }
+        .dark-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        .draggable {
+            cursor: move;
+            user-select: none;
+        }
+        .character-sheet {
+            background-image: url('https://www.transparenttextures.com/patterns/parchment.png');
+        }
+        .map-container {
+            background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
+        }
+        .sidebar {
+            height: calc(100vh - 4rem);
+        }
+        /* Dice animation */
+        @keyframes diceRoll {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(90deg); }
+            50% { transform: rotate(180deg); }
+            75% { transform: rotate(270deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .rolling {
+            animation: diceRoll 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Main App Container -->
+    <div id="app" class="min-h-screen">
+        <!-- Loading Screen -->
+        <div id="loading" class="fixed inset-0 bg-black z-50 flex items-center justify-center">
+            <div class="text-center">
+                <div class="w-16 h-16 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p class="text-xl font-fantasy">Carregando o Portal da Aventura...</p>
+            </div>
+        </div>
+
+        <!-- Welcome Portal Screen -->
+        <div id="welcome-portal" class="fixed inset-0 flex items-center justify-center bg-fantasy dark-overlay transition-opacity duration-1000">
+            <div class="text-center p-8 max-w-2xl bg-black bg-opacity-60 rounded-xl backdrop-blur-sm">
+                <h1 class="text-5xl font-bold mb-6 text-amber-400 font-serif">FIRE HOUSE CLUB</h1>
+                <p class="text-xl mb-8">Prepare-se para jornadas épicas em mundos de fantasia e mistério</p>
+                
+                <div id="login-form" class="max-w-md mx-auto">
+                    <div class="mb-4">
+                        <input type="text" id="username" placeholder="Nome do Aventureiro" class="w-full p-3 bg-gray-800 border border-amber-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    </div>
+                    <div class="mb-6">
+                        <input type="password" id="password" placeholder="Senha Secreta" class="w-full p-3 bg-gray-800 border border-amber-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    </div>
+                    <button id="login-button" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-door-open mr-2"></i> Entrar na Aventura
+                    </button>
+                    <div class="mt-6 grid grid-cols-2 gap-4">
+                        <button class="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg">
+                            <i class="fas fa-user-plus mr-1"></i> Novo Jogador
+                        </button>
+                        <button class="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg">
+                            <i class="fas fa-key mr-1"></i> Recuperar Acesso
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard (hidden by default) -->
+        <div id="main-dashboard" class="hidden">
+            <!-- Top Navigation -->
+            <nav class="bg-gray-800 p-4 flex justify-between items-center shadow-lg">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-amber-400">CAMPANHA: <span id="campaign-name" class="text-white">Reinos Perdidos</span></h1>
+                    <button id="theme-toggle" class="p-2 rounded-lg bg-gray-700 hover:bg-gray-600">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="relative group">
+                        <button class="p-2 bg-amber-600 rounded-lg hover:bg-amber-700">
+                            <i class="fas fa-dice-d20"></i>
+                            <span class="ml-1">Rolagens</span>
+                        </button>
+                        <div class="absolute hidden group-hover:block right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl z-10">
+                            <!-- Dice roller dropdown -->
+                            <div class="p-2 grid grid-cols-3 gap-2">
+                                <button class="dice-btn bg-gray-700 hover:bg-amber-600 p-2 rounded" data-sides="4">D4</button>
+                                <button class="dice-btn bg-gray-700 hover:bg-amber-600 p-2 rounded" data-sides="6">D6</button>
+                                <button class="dice-btn bg-gray-700 hover:bg-amber-600 p-2 rounded" data-sides="8">D8</button>
+                                <button class="dice-btn bg-gray-700 hover:bg-amber-600 p-2 rounded" data-sides="10">D10</button>
+                                <button class="dice-btn bg-gray-700 hover:bg-amber-600 p-2 rounded" data-sides="12">D12</button>
+                                <button class="dice-btn bg-gray-700 hover:bg-amber-600 p-2 rounded" data-sides="20">D20</button>
+                            </div>
+                            <div class="p-2 border-t border-gray-700">
+                                <input type="number" min="1" max="10" value="1" id="dice-count" class="w-12 p-1 bg-gray-700 rounded text-center">
+                                <span class="mx-2">x</span>
+                                <select id="dice-type" class="p-1 bg-gray-700 rounded">
+                                    <option value="4">D4</option>
+                                    <option value="6">D6</option>
+                                    <option value="8">D8</option>
+                                    <option value="10">D10</option>
+                                    <option value="12">D12</option>
+                                    <option value="20" selected>D20</option>
+                                    <option value="100">D100</option>
+                                </select>
+                                <button id="roll-custom" class="ml-2 px-2 py-1 bg-amber-600 rounded hover:bg-amber-700">Rolar</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="music-toggle" class="p-2 bg-indigo-600 rounded-lg hover:bg-indigo-700">
+                        <i class="fas fa-music"></i>
+                    </button>
+                    
+                    <div class="relative group">
+                        <button class="p-2 bg-gray-700 rounded-lg hover:bg-gray-600 flex items-center">
+                            <img src="https://i.pravatar.cc/40" alt="Avatar" class="w-8 h-8 rounded-full mr-2">
+                            <span id="user-display">Gandalf</span>
+                        </button>
+                        <div class="absolute hidden group-hover:block right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl z-10">
+                            <a href="#" class="block px-4 py-2 hover:bg-gray-700">Minha Conta</a>
+                            <a href="#" class="block px-4 py-2 hover:bg-gray-700">Configurações</a>
+                            <div class="border-t border-gray-700"></div>
+                            <a href="#" id="logout-button" class="block px-4 py-2 text-red-400 hover:bg-gray-700">Sair</a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <div class="flex">
+                <!-- Sidebar Navigation -->
+                <div class="sidebar w-16 bg-gray-800 flex flex-col items-center py-4 space-y-6 border-r border-gray-700">
+                    <button class="nav-btn active p-3 rounded-lg bg-amber-600 text-white" data-panel="dashboard">
+                        <i class="fas fa-home text-xl"></i>
+                    </button>
+                    <button class="nav-btn p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white" data-panel="character">
+                        <i class="fas fa-user text-xl"></i>
+                    </button>
+                    <button class="nav-btn p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white" data-panel="map">
+                        <i class="fas fa-map text-xl"></i>
+                    </button>
+                    <button class="nav-btn p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white" data-panel="notes">
+                        <i class="fas fa-book text-xl"></i>
+                    </button>
+                    <button class="nav-btn p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white" data-panel="chat">
+                        <i class="fas fa-comments text-xl"></i>
+                    </button>
+                    <button class="nav-btn p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white" data-panel="campaign">
+                        <i class="fas fa-scroll text-xl"></i>
+                    </button>
+                    <button class="nav-btn gm-only p-3 rounded-lg bg-purple-700 hover:bg-purple-600 text-white" data-panel="gm-tools">
+                        <i class="fas fa-hat-wizard text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Content Panels -->
+                <div class="flex-1">
+                    <!-- Dashboard Panel -->
+                    <div id="dashboard-panel" class="content-panel p-6">
+                        <h2 class="text-3xl font-bold mb-6 text-amber-400">Painel de Controle</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <!-- Session Info -->
+                            <div class="bg-gray-800 p2- rounded-lg shadow-lg">
+                                <div class="bg-gray-700 px-4 py-2 rounded-t-lg flex justify-between items-center">
+                                    <h3 class="font-bold text-lg">Próxima Sessão</h3>
+                                    <span class="bg-green-600 text-xs px-2 py-1 rounded-full">ATIVA</span>
+                                </div>
+                                <div class="p-4">
+                                    <p class="text-amber-300 mb-2"><i class="fas fa-calendar-day mr-2"></i>Quinta-feira, 15 de Junho</p>
+                                    <p class="text-gray-300 mb-2"><i class="fas fa-clock mr-2"></i>20:00 - 23:00</p>
+                                    <p class="text-gray-300"><i class="fas fa-map-marker-alt mr-2"></i>Portal da Aventura Online</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Campaign Progress -->
+                            <div class="bg-gray-800 p-2 rounded-lg shadow-lg">
+                                <div class="bg-gray-700 px-4 py-2 rounded-t-lg">
+                                    <h3 class="font-bold text-lg">Progresso da Campanha</h3>
+                                </div>
+                                <div class="p-4">
+                                    <div class="mb-3">
+                                        <p class="text-sm text-gray-400 mb-1">Sessões: 8/20</p>
+                                        <div class="w-full bg-gray-700 h-2 rounded">
+                                            <div class="bg-amber-500 h-2 rounded" style="width: 40%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <p class="text-sm text-gray-400 mb-1">Nível do Grupo: 3/10</p>
+                                        <div class="w-full bg-gray-700 h-2 rounded">
+                                            <div class="bg-blue-500 h-2 rounded" style="width: 30%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <p class="text-sm text-gray-400 mb-1">Mistério Resolvido: 25%</p>
+                                        <div class="w-full bg-gray-700 h-2 rounded">
+                                            <div class="bg-purple-500 h-2 rounded" style="width: 25%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Quick Actions -->
+                            <div class="bg-gray-800 p-2 rounded-lg shadow-lg">
+                                <div class="bg-gray-700 px-4 py-2 rounded-t-lg">
+                                    <h3 class="font-bold text-lg">Ações Rápidas</h3>
+                                </div>
+                                <div class="p-4 grid grid-cols-2 gap-3">
+                                    <button class="quick-action bg-gray-700 hover:bg-gray-600 p-3 rounded-lg flex items-center">
+                                        <i class="fas fa-dice-d20 text-amber-400 mr-2"></i>
+                                        <span>Rolar D20</span>
+                                    </button>
+                                    <button class="quick-action bg-gray-700 hover:bg-gray-600 p-3 rounded-lg flex items-center">
+                                        <i class="fas fa-book text-blue-400 mr-2"></i>
+                                        <span>Anotações</span>
+                                    </button>
+                                    <button class="quick-action bg-gray-700 hover:bg-gray-600 p-3 rounded-lg flex items-center">
+                                        <i class="fas fa-map-marked-alt text-green-400 mr-2"></i>
+                                        <span>Mapa</span>
+                                    </button>
+                                    <button class="quick-action bg-gray-700 hover:bg-gray-600 p-3 rounded-lg flex items-center">
+                                        <i class="fas fa-users text-purple-400 mr-2"></i>
+                                        <span>Grupo</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-800 p-2 rounded-lg shadow-lg">
+                            <div class="bg-gray-700 px-4 py-2 rounded-t-lg flex justify-between items-center">
+                                <h3 class="font-bold text-lg">Atividade Recente</h3>
+                                <div class="flex space-x-2">
+                                    <button class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">Hoje</button>
+                                    <button class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">Semana</button>
+                                    <button class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">Mês</button>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <div class="space-y-4">
+                                    <div class="activity-item border-b border-gray-700 pb-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-gray-400"><i class="fas fa-user mr-2 text-amber-400"></i>Gandalf atualizou sua ficha</span>
+                                            <span class="text-xs text-gray-500">2 horas atrás</span>
+                                        </div>
+                                        <p class="text-sm mt-1 text-gray-300">+1 nível de mago alcançado!</p>
+                                    </div>
+                                    <div class="activity-item border-b border-gray-700 pb-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-gray-400"><i class="fas fa-dice-d20 mr-2 text-blue-400"></i>Frodo rolou um D20</span>
+                                            <span class="text-xs text-gray-500">5 horas atrás</span>
+                                        </div>
+                                        <p class="text-sm mt-1 text-gray-300">Persuasão: 18 (Sucesso!)</p>
+                                    </div>
+                                    <div class="activity-item border-b border-gray-700 pb-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-gray-400"><i class="fas fa-scroll mr-2 text-purple-400"></i>Mestre adicionou uma nota</span>
+                                            <span class="text-xs text-gray-500">1 dia atrás</span>
+                                        </div>
+                                        <p class="text-sm mt-1 text-gray-300">Olho de Sauron se volta para a comitiva...</p>
+                                    </div>
+                                    <div class="activity-item">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-gray-400"><i class="fas fa-treasure-chest mr-2 text-green-400"></i>Grupo encontrou uma recompensa</span>
+                                            <span class="text-xs text-gray-500">3 dias atrás</span>
+                                        </div>
+                                        <p class="text-sm mt-1 text-gray-300">Espada Élfica +1 adicionada ao inventário</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Character Sheet Panel -->
+                    <div id="character-panel" class="content-panel p-6 hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-3xl font-bold text-amber-400">Ficha de Personagem</h2>
+                            <div>
+                                <button class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg mr-2">
+                                    <i class="fas fa-save mr-1"></i> Salvar
+                                </button>
+                                <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg">
+                                    <i class="fas fa-print mr-1"></i> Imprimir
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="character-sheet bg-amber-50 text-gray-800 p-6 mb-6 rounded-lg shadow-lg">
+                            <div class="flex justify-between items-start mb-6 border-b border-amber-200 pb-4">
+                                <div>
+                                    <h3 class="text-2xl font-bold text-amber-900">Gandalf, o Cinzento</h3>
+                                    <p class="text-amber-800">Mago Nível 5 | Elfo Alto | Alinhamento Bom</p>
+                                </div>
+                                <div class="flex space-x-4">
+                                    <div class="text-center">
+                                        <p class="text-xs font-bold text-amber-700">ÍNICIO</p>
+                                        <p class="text-xl font-bold">+3</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-xs font-bold text-amber-700">PV</p>
+                                        <p class="text-xl font-bold">32/38</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-xs font-bold text-amber-700">CA</p>
+                                        <p class="text-xl font-bold">14</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Left Column -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <h4 class="font-bold text-lg border-b border-amber-200 mb-2 text-amber-800">Atributos</h4>
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between">
+                                                <span>Força</span>
+                                                <span class="font-bold">10 (+0)</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span>Destreza</span>
+                                                <span class="font-bold">14 (+2)</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span>Constituição</span>
+                                                <span class="font-bold">12 (+1)</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span>Inteligência</span>
+                                                <span class="font-bold">18 (+4)</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span>Sabedoria</span>
+                                                <span class="font-bold">16 (+3)</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span>Carisma</span>
+                                                <span class="font-bold">14 (+2)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-bold text-lg border-b border-amber-200 mb-2 text-amber-800">Perícias</h4>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" checked class="mr-1">
+                                                <span>Arcanismo</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" class="mr-1">
+                                                <span>Atletismo</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" checked class="mr-1">
+                                                <span>História</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" class="mr-1">
+                                                <span>Intimidação</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" checked class="mr-1">
+                                                <span>Intuição</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" checked class="mr-1">
+                                                <span>Persuasão</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" class="mr-1">
+                                                <span>Furtividade</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" class="mr-1">
+                                                <span>Religião</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-bold text-lg border-b border-amber-200 mb-2 text-amber-800">Resistências</h4>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" checked class="mr-1">
+                                                <span>Venenos</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" checked class="mr-1">
+                                                <span>Encantamento</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" class="mr-1">
+                                                <span>Medo</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Middle Column -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <h4 class="font-bold text-lg border-b border-amber-200 mb-2 text-amber-800">Características</h4>
+                                        <div>
+                                            <p class="text-sm mb-2"><strong class="text-amber-700">Visão no Escuro:</strong> 18m</p>
+                                            <p class="text-sm mb-2"><strong class="text-amber-700">Transe:</strong> Não precisa dormir</p>
+                                            <p class="text-sm mb-2"><strong class="text-amber-700">Ascensão Arcana:</strong> 3 usos/dia</p>
+                                            <p class="text-sm"><strong class="text-amber-700">Recuperação Arcana:</strong> Descanso curto</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-bold text-lg border-b border-amber-200 mb-2 text-amber-800">Magias</h4>
+                                        <div>
+                                            <p class="mb-2"><strong class="text-amber-700">Magias Conhecidas:</strong> 8</p>
+                                            <p class="mb-2"><strong class="text-amber-700">Espaços de Magia:</strong> 4/3/2</p>
+                                            <div class="space-y-2">
+                                                <p class="text-sm"><strong>Cantrips:</strong> Luz, Prestidigitação, Raio de Gelo</p>
+                                                <p class="text-sm"><strong>Nível 1:</strong> Identificar, Dormir, Escudo Mágico</p>
+                                                <p class="text-sm"><strong>Nível 2:</strong> Imobilizar Pessoa, Bola de Fogo</p>
+                                                <p class="text-sm"><strong>Nível 3:</strong> Voo, Contragolpe</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Right Column -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <h4 class="font-bold text-lg border-b border-amber-200 mb-2 text-amber-800">Equipamento</h4>
+                                        <div class="space-y-2">
+                                            <p class="text-sm">Cajado Arcano (1d6+1 contundente)</p>
+                                            <p class="text-sm">Adaga (1d4 perfurante)</p>
+                                            <p class="text-sm">Manto do Viajante</p>
+                                            <p class="text-sm">Poção de Cura x3</p>
+                                            <p class="text-sm">Pergaminhos Mágicos x2</p>
+                                            <p class="text-sm">Bolsão de Componentes</p>
+                                            <p class="text-sm">50 peças de ouro</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-bold text-lg border-b border-amber-200 mb-2 text-amber-800">Testemunhos</h4>
+                                        <div class="space-y-2">
+                                            <p class="text-sm"><strong class="text-amber-700">Aliados:</strong> Conselho Branco, Elfos de Valfenda</p>
+                                            <p class="text-sm"><strong class="text-amber-700">Inimigos:</strong> Sauron, Saruman</p>
+                                            <p class="text-sm"><strong class="text-amber-700">Objetivo:</strong> Destruir o Um Anel</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-bold text-lg border-b border-amber-200 mb-2 text-amber-800">Traços</h4>
+                                        <textarea class="w-full h-24 p-2 border border-amber-300 rounded bg-amber-100 text-gray-800 text-sm" placeholder="Traços de personalidade, ideais, laços e defeitos...">Gandalf é um mago sábio e bondoso, sempre buscando guiar os povos livres contra as forças das trevas. Possui paciência mas pode ser firme quando necessário. Sua maior preocupação é a segurança da Terra Média.</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Map Panel -->
+                    <div id="map-panel" class="content-panel p-6 hidden">
+                        <h2 class="text-3xl font-bold mb-6 text-amber-400">Mapa da Campanha</h2>
+                        
+                        <div class="flex mb-4">
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-l-lg border-r border-gray-600 flex items-center">
+                                <i class="fas fa-layer-group mr-2"></i> Camadas
+                            </button>
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 border-r border-gray-600 flex items-center">
+                                <i class="fas fa-ruler-combined mr-2"></i> Medir
+                            </button>
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 border-r border-gray-600 flex items-center">
+                                <i class="fas fa-map-marker-alt mr-2"></i> Marcações
+                            </button>
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 border-r border-gray-600 flex items-center">
+                                <i class="fas fa-eye mr-2"></i> Visão
+                            </button>
+                            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-r-lg flex items-center">
+                                <i class="fas fa-cog mr-2"></i> Configurações
+                            </button>
+                        </div>
+                        
+                        <div class="map-container border-2 border-gray-700 rounded-lg overflow-hidden relative" style="height: 600px;">
+                            <!-- Background map image -->
+                            <img src="imagens/-JbiJwhSenp0lkefQHx8yLP2jQXcZzgPMlc8PoK3og4.webp" alt="Map of Middle Earth" class="w-full h-full object-contain">
+                            
+                            <!-- Tokens (would be draggable in real app) -->
+                            <div class="absolute top-1/2 left-1/2 w-12 h-12 bg-blue-500 rounded-full draggable border-2 border-white cursor-move" style="transform: translate(-50%, -50%);">
+                                <img src="imagens/d-d-2024-player-s-handbook-apparently-forgot-what-made-tasha-s-character-building-so-great-cover-art-from-a-1e-advanced-dungeons-dragons-adventure.avif" alt="Player token" class="w-full h-full rounded-full">
+                            </div>
+                            <div class="absolute top-1/4 left-1/4 w-10 h-10 bg-red-500 rounded-full draggable border-2 border-white cursor-move">
+                                <i class="fas fa-skull text-white text-xl absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></i>
+                            </div>
+                            <div class="absolute top-3/4 left-3/4 w-8 h-8 bg-green-500 rounded-full draggable border-2 border-white cursor-move">
+                                <i class="fas fa-chess-queen text-white text-lg absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></i>
+                            </div>
+                            
+                            <!-- GM Fog of War (hidden for players) -->
+                            <div class="fog-of-war hidden absolute inset-0 bg-black opacity-70"></div>
+                            
+                            <!-- Grid overlay toggle -->
+                            <button id="grid-toggle" class="absolute bottom-4 right-4 bg-gray-800 p-2 rounded-full hover:bg-gray-700">
+                                <i class="fas fa-th-large"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4 flex justify-between">
+                            <div class="text-gray-400 text-sm">
+                                <span>Zoom: 100%</span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="bg-gray-700 hover:bg-gray-600 p-2 rounded-l-lg">
+                                    <i class="fas fa-search-minus"></i>
+                                </button>
+                                <button class="bg-gray-700 hover:bg-gray-600 p-2">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                                <button class="bg-gray-700 hover:bg-gray-600 p-2 rounded-r-lg">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes Panel -->
+                    <div id="notes-panel" class="content-panel p-6 hidden">
+                        <h2 class="text-3xl font-bold mb-6 text-amber-400">Diário e Anotações</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <!-- Note Categories -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                                <div class="bg-gray-700 px-4 py-3 flex justify-between items-center">
+                                    <h3 class="font-bold">Categorias</h3>
+                                    <button class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                <div class="p-4">
+                                    <ul class="space-y-2">
+                                        <li class="flex items-center justify-between py-1 px-2 bg-gray-700 rounded">
+                                            <span class="flex items-center">
+                                                <i class="fas fa-bookmark text-amber-400 mr-2"></i>
+                                                <span>Sessões</span>
+                                            </span>
+                                            <span class="text-xs bg-gray-600 px-2 py-1 rounded-full">8</span>
+                                        </li>
+                                        <li class="flex items-center justify-between py-1 px-2 hover:bg-gray-700 rounded">
+                                            <span class="flex items-center">
+                                                <i class="fas fa-bookmark text-blue-400 mr-2"></i>
+                                                <span>NPCs</span>
+                                            </span>
+                                            <span class="text-xs bg-gray-600 px-2 py-1 rounded-full">24</span>
+                                        </li>
+                                        <li class="flex items-center justify-between py-1 px-2 hover:bg-gray-700 rounded">
+                                            <span class="flex items-center">
+                                                <i class="fas fa-bookmark text-green-400 mr-2"></i>
+                                                <span>Locais</span>
+                                            </span>
+                                            <span class="text-xs bg-gray-600 px-2 py-1 rounded-full">14</span>
+                                        </li>
+                                        <li class="flex items-center justify-between py-1 px-2 hover:bg-gray-700 rounded">
+                                            <span class="flex items-center">
+                                                <i class="fas fa-bookmark text-purple-400 mr-2"></i>
+                                                <span>Plot</span>
+                                            </span>
+                                            <span class="text-xs bg-gray-600 px-2 py-1 rounded-full">5</span>
+                                        </li>
+                                        <li class="flex items-center justify-between py-1 px-2 hover:bg-gray-700 rounded">
+                                            <span class="flex items-center">
+                                                <i class="fas fa-bookmark text-red-400 mr-2"></i>
+                                                <span>Side Quests</span>
+                                            </span>
+                                            <span class="text-xs bg-gray-600 px-2 py-1 rounded-full">3</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <!-- Note List -->
+                            <div class="md:col-span-2 bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                                <div class="bg-gray-700 px-4 py-3 flex justify-between items-center">
+                                    <h3 class="font-bold">Notas da Sessão #8</h3>
+                                    <div class="flex space-x-2">
+                                        <button class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                            <i class="fas fa-filter"></i>
+                                        </button>
+                                        <button class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                            <i class="fas fa-sort"></i>
+                                        </button>
+                                        <button class="text-xs bg-amber-600 hover:bg-amber-500 px-2 py-1 rounded">
+                                            <i class="fas fa-plus"></i> Nova
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <div class="space-y-3">
+                                        <div class="note-item bg-gray-700 p-3 rounded-lg hover:bg-gray-600">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-bold text-sm mb-1">Encontro com Galadriel</h4>
+                                                <span class="text-xs text-gray-400">Ontem</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 truncate">Galadriel advertiu o grupo sobre os perigos que virão e presenteou cada um com um presente sobrenatural...</p>
+                                            <div class="flex justify-end mt-2 space-x-1">
+                                                <span class="text-xs bg-blue-500 px-2 py-1 rounded-full">NPCs</span>
+                                                <span class="text-xs bg-purple-500 px-2 py-1 rounded-full">Plot</span>
+                                            </div>
+                                        </div>
+                                        <div class="note-item bg-gray-700 p-3 rounded-lg hover:bg-gray-600">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-bold text-sm mb-1">Novos itens adquiridos</h4>
+                                                <span class="text-xs text-gray-400">2 dias atrás</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 truncate">Anel de Proteção +1, Poção de Invisibilidade, Pergaminho de Teleporte, Elmo da Compreensão Linguística...</p>
+                                            <div class="flex justify-end mt-2 space-x-1">
+                                                <span class="text-xs bg-amber-500 px-2 py-1 rounded-full">Items</span>
+                                            </div>
+                                        </div>
+                                        <div class="note-item bg-gray-700 p-3 rounded-lg hover:bg-gray-600">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-bold text-sm mb-1">Mapa da Mina do Pico da Águia</h4>
+                                                <span class="text-xs text-gray-400">1 semana</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 truncate">Localização do Portal Secreto, Armadilha nas Escadas, Sala do Tesouro guardada por um Golem de Pedra...</p>
+                                            <div class="flex justify-end mt-2 space-x-1">
+                                                <span class="text-xs bg-green-500 px-2 py-1 rounded-full">Locais</span>
+                                            </div>
+                                        </div>
+                                        <div class="note-item bg-gray-700 p-3 rounded-lg hover:bg-gray-600">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-bold text-sm mb-1">Lenda do Um Anel</h4>
+                                                <span class="text-xs text-gray-400">2 semanas</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 truncate">Forjado por Sauron nas Fogueiras do Monte da Perdição, contém grande parte de seu poder. Pode corromper até os mais puros...</p>
+                                            <div class="flex justify-end mt-2 space-x-1">
+                                                <span class="text-xs bg-purple-500 px-2 py-1 rounded-full">Plot</span>
+                                                <span class="text-xs bg-red-500 px-2 py-1 rounded-full">Lore</span>
+                                            </div>
+                                        </div>
+                                        <div class="note-item bg-gray-700 p-3 rounded-lg hover:bg-gray-600">
+                                            <div class="flex justify-between">
+                                                <h4 class="font-bold text-sm mb-1">Inimigos encontrados</h4>
+                                                <span class="text-xs text-gray-400">3 semanas</span>
+                                            </div>
+                                            <p class="text-xs text-gray-300 truncate">Orcs do Clã da Mão Negra, Troll da Montanha, Aranhas Gigantes da Floresta das Trevas, Nazgûl perseguindo o portador do Anel...</p>
+                                            <div class="flex justify-end mt-2 space-x-1">
+                                                <span class="text-xs bg-blue-500 px-2 py-1 rounded-full">NPCs</span>
+                                                <span class="text-xs bg-gray-500 px-2 py-1 rounded-full">Inimigos</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Note Editor -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                                <div class="bg-gray-700 px-4 py-3 flex justify-between items-center">
+                                    <h3 class="font-bold">Nova Nota</h3>
+                                    <div class="flex">
+                                        <button class="text-xs bg-amber-600 hover:bg-amber-500 px-2 py-1 rounded mr-1">
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                        <button class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <input type="text" placeholder="Título da Nota" class="w-full p-2 mb-3 bg-gray-700 rounded border border-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    <textarea class="w-full h-64 p-3 bg-gray-700 rounded border border-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Comece a escrever suas anotações aqui..."></textarea>
+                                    <div class="mt-3">
+                                        <p class="text-xs text-gray-400 mb-1">Tags:</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <span class="text-xs bg-blue-500 px-2 py-1 rounded-full flex items-center">
+                                                NPCs
+                                                <button class="ml-1 text-xs">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </span>
+                                            <span class="text-xs bg-purple-500 px-2 py-1 rounded-full flex items-center">
+                                                Plot
+                                                <button class="ml-1 text-xs">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </span>
+                                            <button class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded-full">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Panel -->
+                    <div id="chat-panel" class="content-panel p-6 hidden">
+                        <h2 class="text-3xl font-bold mb-6 text-amber-400">Chat da Sessão</h2>
+                        
+                        <div class="flex h-[600px]">
+                            <!-- Members List -->
+                            <div class="w-1/4 bg-gray-800 rounded-l-lg border-r border-gray-700 overflow-hidden">
+                                <div class="bg-gray-700 px-4 py-3">
+                                    <h3 class="font-bold">Participantes (5)</h3>
+                                </div>
+                                <div class="p-3 overflow-y-auto h-[calc(100%-49px)]">
+                                    <div class="space-y-3">
+                                        <div class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                            <div class="relative">
+                                                <img src="https://i.pravatar.cc/40" alt="Avatar" class="w-10 h-10 rounded-full">
+                                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></span>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-sm">Gandalf</p>
+                                                <p class="text-xs text-gray-400">Mestre</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                            <div class="relative">
+                                                <img src="https://i.pravatar.cc/40?img=5" alt="Avatar" class="w-10 h-10 rounded-full">
+                                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></span>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-sm">Frodo</p>
+                                                <p class="text-xs text-gray-400">Ladino</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                            <div class="relative">
+                                                <img src="https://i.pravatar.cc/40?img=6" alt="Avatar" class="w-10 h-10 rounded-full">
+                                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></span>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-sm">Aragorn</p>
+                                                <p class="text-xs text-gray-400">Guerreiro</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                            <div class="relative">
+                                                <img src="https://i.pravatar.cc/40?img=7" alt="Avatar" class="w-10 h-10 rounded-full">
+                                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-yellow-500 rounded-full border-2 border-gray-800"></span>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-sm">Legolas</p>
+                                                <p class="text-xs text-gray-400">Arqueiro</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                            <div class="relative">
+                                                <img src="https://i.pravatar.cc/40?img=8" alt="Avatar" class="w-10 h-10 rounded-full">
+                                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-gray-800"></span>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-sm">Gimli</p>
+                                                <p class="text-xs text-gray-400">Offline</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-6">
+                                        <h4 class="text-xs font-bold text-gray-400 uppercase mb-2">NPCs no Chat</h4>
+                                        <div class="space-y-2">
+                                            <div class="flex items-center space-x-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                                <div class="relative">
+                                                    <img src="https://i.pravatar.cc/40?img=9" alt="Avatar" class="w-8 h-8 rounded-full">
+                                                </div>
+                                                <p class="text-sm">Elrond</p>
+                                            </div>
+                                            <div class="flex items-center space-x-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                                <div class="relative">
+                                                    <img src="https://i.pravatar.cc/40?img=10" alt="Avatar" class="w-8 h-8 rounded-full">
+                                                </div>
+                                                <p class="text-sm">Galadriel</p>
+                                            </div>
+                                            <div class="flex items-center space-x-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                                <div class="relative">
+                                                    <img src="https://i.pravatar.cc/40?img=11" alt="Avatar" class="w-8 h-8 rounded-full">
+                                                </div>
+                                                <p class="text-sm">Gollum</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Chat Window -->
+                            <div class="flex-1 flex flex-col bg-gray-800 rounded-r-lg">
+                                <!-- Chat Header -->
+                                <div class="bg-gray-700 px-4 py-3 flex items-center justify-between border-b border-gray-600">
+                                    <div class="flex items-center">
+                                        <h3 class="font-bold">Sessão #8: A Jornada para Valfenda</h3>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <button class="text-gray-400 hover:text-white">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                        <button class="text-gray-400 hover:text-white">
+                                            <i class="fas fa-cog"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Messages -->
+                                <div class="flex-1 p-4 overflow-y-auto space-y-4">
+                                    <!-- System message -->
+                                    <div class="text-center">
+                                        <span class="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded-full">
+                                            Gandalf iniciou a sessão há 2 horas
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Message from GM -->
+                                    <div class="flex items-start space-x-3 pr-10">
+                                        <img src="https://i.pravatar.cc/40" alt="Avatar" class="w-8 h-8 rounded-full flex-shrink-0">
+                                        <div>
+                                            <div class="flex items-baseline space-x-2 mb-1">
+                                                <span class="font-bold text-sm">Gandalf</span>
+                                                <span class="text-xs text-gray-400">(Mestre)</span>
+                                                <span class="text-xs text-gray-400">14:30</span>
+                                            </div>
+                                            <div class="bg-gray-700 p-3 rounded-lg rounded-tl-none">
+                                                <p class="text-sm">Vocês se encontram nas margens do rio Bruinen, com Valfenda já avistada ao longe. O sol começa a se pôr atrás das montanhas, pintando o céu de tons avermelhados. O ar está fresco e o som da água corrente preenche o ambiente. O que vocês fazem?</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Message from Player -->
+                                    <div class="flex items-start space-x-3 pl-10">
+                                        <div class="ml-auto max-w-xs md:max-w-md">
+                                            <div class="flex items-baseline justify-end space-x-2 mb-1">
+                                                <span class="text-xs text-gray-400">14:32</span>
+                                                <span class="font-bold text-sm">Frodo</span>
+                                            </div>
+                                            <div class="bg-amber-600 p-3 rounded-lg rounded-tr-none">
+                                                <p class="text-sm">Eu sugiro que sigamos com cautela, Gandalf. Desde que deixamos o Condado, tenho a sensação de que estamos sendo seguidos...</p>
+                                            </div>
+                                        </div>
+                                        <img src="https://i.pravatar.cc/40?img=5" alt="Avatar" class="w-8 h-8 rounded-full flex-shrink-0">
+                                    </div>
+                                    
+                                    <!-- Dice roll -->
+                                    <div class="flex items-start space-x-3 pr-10">
+                                        <img src="https://i.pravatar.cc/40?img=6" alt="Avatar" class="w-8 h-8 rounded-full flex-shrink-0">
+                                        <div>
+                                            <div class="flex items-baseline space-x-2 mb-1">
+                                                <span class="font-bold text-sm">Aragorn</span>
+                                                <span class="text-xs text-gray-400">14:33</span>
+                                            </div>
+                                            <div class="bg-gray-700 p-3 rounded-lg rounded-tl-none">
+                                                <div class="flex items-center space-x-2">
+                                                    <div class="dice-result bg-black bg-opacity-30 px-3 py-1 rounded-full flex items-center">
+                                                        <div class="dice-icon mr-2">
+                                                            <i class="fas fa-dice-d20"></i>
+                                                        </div>
+                                                        <span class="font-mono">Percepção: 17</span>
+                                                    </div>
+                                                </div>
+                                                <p class="text-sm mt-2">Vou examinar a área em busca de sinais de perseguição.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- GM response -->
+                                    <div class="flex items-start space-x-3 pr-10">
+                                        <img src="https://i.pravatar.cc/40" alt="Avatar" class="w-8 h-8 rounded-full flex-shrink-0">
+                                        <div>
+                                            <div class="flex items-baseline space-x-2 mb-1">
+                                                <span class="font-bold text-sm">Gandalf</span>
+                                                <span class="text-xs text-gray-400">(Mestre)</span>
+                                                <span class="text-xs text-gray-400">14:34</span>
+                                            </div>
+                                            <div class="bg-gray-700 p-3 rounded-lg rounded-tl-none">
+                                                <p class="text-sm">Aragorn, ao examinar a área, você nota pegadas recentes na margem do rio, maiores que as de um homem comum, e alguns galhos quebrados na vegetação à direita do caminho, como se algo grande tivesse passado por ali rapidamente.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Private GM message only for one player -->
+                                    <div class="flex items-start space-x-3 pr-10">
+                                        <img src="https://i.pravatar.cc/40" alt="Avatar" class="w-8 h-8 rounded-full flex-shrink-0">
+                                        <div>
+                                            <div class="flex items-baseline space-x-2 mb-1">
+                                                <span class="font-bold text-sm">Gandalf</span>
+                                                <span class="text-xs text-gray-400">(Privado para Frodo)</span>
+                                                <span class="text-xs text-gray-400">14:35</span>
+                                            </div>
+                                            <div class="bg-purple-700 p-3 rounded-lg rounded-tl-none">
+                                                <p class="text-sm">Enquanto os outros discutem, você sente um leve tremor no seu bolso. O Um Anel parece mais pesado, como se estivesse tentando chamar atenção para si mesmo.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Player response to private message -->
+                                    <div class="flex items-start space-x-3 pl-10">
+                                        <div class="ml-auto max-w-xs md:max-w-md">
+                                            <div class="flex items-baseline justify-end space-x-2 mb-1">
+                                                <span class="text-xs text-gray-400">14:36</span>
+                                                <span class="font-bold text-sm">Frodo</span>
+                                            </div>
+                                            <div class="bg-amber-600 p-3 rounded-lg rounded-tr-none">
+                                                <p class="text-sm">(em resposta privada) Gandalf, estou começando a pensar que devíamos ter deixado o Anel em Valfenda... Ele parece cada vez mais... vivo.</p>
+                                            </div>
+                                        </div>
+                                        <img src="https://i.pravatar.cc/40?img=5" alt="Avatar" class="w-8 h-8 rounded-full flex-shrink-0">
+                                    </div>
+                                </div>
+                                
+                                <!-- Message Input -->
+                                <div class="p-4 border-t border-gray-700">
+                                    <div class="flex items-center space-x-2">
+                                        <button class="text-gray-400 hover:text-white p-2">
+                                            <i class="fas fa-paperclip"></i>
+                                        </button>
+                                        <button class="text-gray-400 hover:text-white p-2">
+                                            <i class="fas fa-dice-d20"></i>
+                                        </button>
+                                        <div class="relative flex-1">
+                                            <input type="text" placeholder="Digite uma mensagem..." class="w-full bg-gray-700 rounded-full py-2 px-4 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                            <button class="absolute right-3 top-2 text-gray-400 hover:text-white">
+                                                <i class="fas fa-smile"></i>
+                                            </button>
+                                        </div>
+                                        <button class="bg-amber-600 hover:bg-amber-700 p-2 rounded-full">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Campaign Panel -->
+                    <div id="campaign-panel" class="content-panel p-6 hidden">
+                        <h2 class="text-3xl font-bold mb-6 text-amber-400">Arquivos da Campanha</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Session History Card -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:transform hover:scale-105 transition duration-300 cursor-pointer">
+                                <div class="h-40 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=2070&auto=format&fit=crop');">
+                                    <div class="h-full w-full bg-black bg-opacity-50 flex items-center justify-center">
+                                        <h3 class="text-2xl font-bold text-center text-white px-4">Histórico de Sessões</h3>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <p class="text-sm text-gray-300">Revisite todas as sessões anteriores, com anotações do mestre, eventos importantes e decisões tomadas.</p>
+                                    <div class="mt-3 flex justify-between items-center">
+                                        <span class="text-xs text-gray-400">8 sessões registradas</span>
+                                        <button class="text-xs bg-amber-600 hover:bg-amber-700 px-3 py-1 rounded">
+                                            Explorar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- World Map Card -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:transform hover:scale-105 transition duration-300 cursor-pointer">
+                                <div class="h-40 bg-cover bg-center" style="background-image: url('https://i.redd.it/qkw1pxv3j6h61.png');">
+                                    <div class="h-full w-full bg-black bg-opacity-50 flex items-center justify-center">
+                                        <h3 class="text-2xl font-bold text-center text-white px-4">Mapa do Mundo</h3>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <p class="text-sm text-gray-300">Explore o vasto mundo da campanha com locais marcados, caminhos percorridos e áreas ainda não descobertas.</p>
+                                    <div class="mt-3 flex justify-between items-center">
+                                        <span class="text-xs text-gray-400">14 locais mapeados</span>
+                                        <button class="text-xs bg-amber-600 hover:bg-amber-700 px-3 py-1 rounded">
+                                            Explorar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Codex Card -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:transform hover:scale-105 transition duration-300 cursor-pointer">
+                                <div class="h-40 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1579972383662-8dd0ce1ef723?q=80&w=2070&auto=format&fit=crop');">
+                                    <div class="h-full w-full bg-black bg-opacity-50 flex items-center justify-center">
+                                        <h3 class="text-2xl font-bold text-center text-white px-4">Códice de Conhecimento</h3>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <p class="text-sm text-gray-300">Toda a lore da campanha: religiões, facções, história do mundo, criaturas e mistérios.</p>
+                                    <div class="mt-3 flex justify-between items-center">
+                                        <span class="text-xs text-gray-400">47 entradas</span>
+                                        <button class="text-xs bg-amber-600 hover:bg-amber-700 px-3 py-1 rounded">
+                                            Explorar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Art Gallery Card -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:transform hover:scale-105 transition duration-300 cursor-pointer">
+                                <div class="h-40 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1589998059171-988d887b1d3e?q=80&w=2076&auto=format&fit=crop');">
+                                    <div class="h-full w-full bg-black bg-opacity-50 flex items-center justify-center">
+                                        <h3 class="text-2xl font-bold text-center text-white px-4">Galeria de Arte</h3>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <p class="text-sm text-gray-300">Conheça visualmente os NPCs, locais e eventos importantes através de ilustrações e arte conceitual.</p>
+                                    <div class="mt-3 flex justify-between items-center">
+                                        <span class="text-xs text-gray-400">32 imagens</span>
+                                        <button class="text-xs bg-amber-600 hover:bg-amber-700 px-3 py-1 rounded">
+                                            Explorar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- NPC Database Card -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:transform hover:scale-105 transition duration-300 cursor-pointer">
+                                <div class="h-40 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1578916046406-efeb7e44a029?q=80&w=2070&auto=format&fit=crop');">
+                                    <div class="h-full w-full bg-black bg-opacity-50 flex items-center justify-center">
+                                        <h3 class="text-2xl font-bold text-center text-white px-4">Arquivo de NPCs</h3>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <p class="text-sm text-gray-300">Todos os personagens encontrados, com detalhes sobre suas motivações, segredos e ligações com o grupo.</p>
+                                    <div class="mt-3 flex justify-between items-center">
+                                        <span class="text-xs text-gray-400">24 personagens</span>
+                                        <button class="text-xs bg-amber-600 hover:bg-amber-700 px-3 py-1 rounded">
+                                            Explorar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Magic Items Card -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:transform hover:scale-105 transition duration-300 cursor-pointer">
+                                <div class="h-40 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1536510233921-8e5043fabbb5?q=80&w=2013&auto=format&fit=crop');">
+                                    <div class="h-full w-full bg-black bg-opacity-50 flex items-center justify-center">
+                                        <h3 class="text-2xl font-bold text-center text-white px-4">Itens Mágicos</h3>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <p class="text-sm text-gray-300">Registro de todos os itens mágicos encontrados ou mencionados na campanha, com suas propriedades e histórias.</p>
+                                    <div class="mt-3 flex justify-between items-center">
+                                        <span class="text-xs text-gray-400">11 itens</span>
+                                        <button class="text-xs bg-amber-600 hover:bg-amber-700 px-3 py-1 rounded">
+                                            Explorar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GM Tools Panel (only visible for GM) -->
+                    <div id="gm-tools-panel" class="content-panel p-6 hidden">
+                        <div class="flex items-center mb-6">
+                            <h2 class="text-3xl font-bold text-purple-400">Ferramentas do Mestre</h2>
+                            <span class="ml-4 bg-purple-800 text-purple-100 px-3 py-1 rounded-full text-sm">GM MODE</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Quick Tools -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                                <h3 class="text-xl font-bold mb-4 border-b border-gray-700 pb-2">Ferramentas Rápidas</h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button class="gm-tool-btn bg-gray-700 hover:bg-purple-700 p-3 rounded-lg flex flex-col items-center">
+                                        <i class="fas fa-user-plus text-2xl mb-2"></i>
+                                        <span>Criar NPC</span>
+                                    </button>
+                                    <button class="gm-tool-btn bg-gray-700 hover:bg-purple-700 p-3 rounded-lg flex flex-col items-center">
+                                        <i class="fas fa-dungeon text-2xl mb-2"></i>
+                                        <span>Gerar Dungeon</span>
+                                    </button>
+                                    <button class="gm-tool-btn bg-gray-700 hover:bg-purple-700 p-3 rounded-lg flex flex-col items-center">
+                                        <i class="fas fa-quote-right text-2xl mb-2"></i>
+                                        <span>Diálogo NPC</span>
+                                    </button>
+                                    <button class="gm-tool-btn bg-gray-700 hover:bg-purple-700 p-3 rounded-lg flex flex-col items-center">
+                                        <i class="fas fa-gem text-2xl mb-2"></i>
+                                        <span>Gerar Tesouro</span>
+                                    </button>
+                                    <button class="gm-tool-btn bg-gray-700 hover:bg-purple-700 p-3 rounded-lg flex flex-col items-center">
+                                        <i class="fas fa-clock text-2xl mb-2"></i>
+                                        <span>Relógio do Mundo</span>
+                                    </button>
+                                    <button class="gm-tool-btn bg-gray-700 hover:bg-purple-700 p-3 rounded-lg flex flex-col items-center">
+                                        <i class="fas fa-random text-2xl mb-2"></i>
+                                        <span>Evento Aleatório</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Session Prep -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                                <h3 class="text-xl font-bold mb-4 border-b border-gray-700 pb-2">Preparação da Sessão</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-2">
+                                            <h4 class="font-bold">Próxima Sessão: #9</h4>
+                                            <span class="text-xs bg-gray-700 px-2 py-1 rounded-full">15/06/2023</span>
+                                        </div>
+                                        <textarea class="w-full h-24 p-3 bg-gray-700 rounded border border-gray-600 focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder="Plano para a sessão...">Objetivos:
+- Chegada em Valfenda
+- Conselho com Elrond sobre o Anel
+- Possíveis emboscadas dos Nazgûl</textarea>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-bold mb-2">Encontros Preparados</h4>
+                                        <div class="space-y-2">
+                                            <div class="flex items-center justify-between p-2 bg-gray-700 rounded hover:bg-gray-600">
+                                                <div>
+                                                    <p class="font-bold text-sm">Emboscada dos Nazgûl</p>
+                                                    <p class="text-xs text-gray-300">Dificuldade: Médio | Local: Caminho para Valfenda</p>
+                                                </div>
+                                                <button class="text-xs bg-purple-700 hover:bg-purple-600 px-2 py-1 rounded">
+                                                    Ativar
+                                                </button>
+                                            </div>
+                                            <div class="flex items-center justify-between p-2 bg-gray-700 rounded hover:bg-gray-600">
+                                                <div>
+                                                    <p class="font-bold text-sm">Conselho de Elrond</p>
+                                                    <p class="text-xs text-gray-300">Dificuldade: N/A | Local: Valfenda</p>
+                                                </div>
+                                                <button class="text-xs bg-purple-700 hover:bg-purple-600 px-2 py-1 rounded">
+                                                    Ativar
+                                                </button>
+                                            </div>
+                                            <button class="w-full text-center text-xs bg-gray-700 hover:bg-gray-600 p-2 rounded">
+                                                <i class="fas fa-plus mr-1"></i> Novo Encontro
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-bold mb-2">Música da Sessão</h4>
+                                        <div class="bg-gray-700 p-3 rounded-lg">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="text-sm">Floresta Encantada.mp3</span>
+                                                <div class="flex space-x-2">
+                                                    <button class="text-xs bg-gray-600 hover:bg-gray-500 p-1 rounded-full w-6 h-6 flex items-center justify-center">
+                                                        <i class="fas fa-play"></i>
+                                                    </button>
+                                                    <button class="text-xs bg-gray-600 hover:bg-gray-500 p-1 rounded-full w-6 h-6 flex items-center justify-center">
+                                                        <i class="fas fa-stop"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-sm">Batalha Épica.mp3</span>
+                                                <div class="flex space-x-2">
+                                                    <button class="text-xs bg-gray-600 hover:bg-gray-500 p-1 rounded-full w-6 h-6 flex items-center justify-center">
+                                                        <i class="fas fa-play"></i>
+                                                    </button>
+                                                    <button class="text-xs bg-gray-600 hover:bg-gray-500 p-1 rounded-full w-6 h-6 flex items-center justify-center">
+                                                        <i class="fas fa-stop"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button class="w-full text-center text-xs bg-gray-700 hover:bg-gray-600 p-2 rounded mt-2">
+                                            <i class="fas fa-plus mr-1"></i> Adicionar Música
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Player Controls -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                                <h3 class="text-xl font-bold mb-4 border-b border-gray-700 pb-2">Controle dos Jogadores</h3>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead>
+                                            <tr class="border-b border-gray-700 text-left">
+                                                <th class="pb-2">Jogador</th>
+                                                <th class="pb-2">Personagem</th>
+                                                <th class="pb-2">PV</th>
+                                                <th class="pb-2">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-700">
+                                            <tr>
+                                                <td class="py-2">
+                                                    <div class="flex items-center">
+                                                        <img src="https://i.pravatar.cc/32?img=5" alt="Avatar" class="w-6 h-6 rounded-full mr-2">
+                                                        <span>Frodo</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2">Frodo Baggins</td>
+                                                <td class="py-2">
+                                                    <div class="flex items-center">
+                                                        <input type="number" value="24" class="w-12 bg-gray-700 p-1 rounded text-center">
+                                                        <span class="mx-1">/</span>
+                                                        <span>28</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2">
+                                                    <div class="flex space-x-1">
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-comment-dots"></i>
+                                                        </button>
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-cog"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-2">
+                                                    <div class="flex items-center">
+                                                        <img src="https://i.pravatar.cc/32?img=6" alt="Avatar" class="w-6 h-6 rounded-full mr-2">
+                                                        <span>Aragorn</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2">Aragorn II</td>
+                                                <td class="py-2">
+                                                    <div class="flex items-center">
+                                                        <input type="number" value="37" class="w-12 bg-gray-700 p-1 rounded text-center">
+                                                        <span class="mx-1">/</span>
+                                                        <span>42</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2">
+                                                    <div class="flex space-x-1">
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-comment-dots"></i>
+                                                        </button>
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-cog"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-2">
+                                                    <div class="flex items-center">
+                                                        <img src="https://i.pravatar.cc/32?img=7" alt="Avatar" class="w-6 h-6 rounded-full mr-2">
+                                                        <span>Legolas</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2">Legolas Verdefolha</td>
+                                                <td class="py-2">
+                                                    <div class="flex items-center">
+                                                        <input type="number" value="31" class="w-12 bg-gray-700 p-1 rounded text-center">
+                                                        <span class="mx-1">/</span>
+                                                        <span>31</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2">
+                                                    <div class="flex space-x-1">
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-comment-dots"></i>
+                                                        </button>
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-cog"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-2">
+                                                    <div class="flex items-center">
+                                                        <img src="https://i.pravatar.cc/32?img=8" alt="Avatar" class="w-6 h-6 rounded-full mr-2">
+                                                        <span>Gimli</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2">Gimli, Filho de Glóin</td>
+                                                <td class="py-2">
+                                                    <div class="flex items-center">
+                                                        <input type="number" value="45" class="w-12 bg-gray-700 p-1 rounded text-center">
+                                                        <span class="mx-1">/</span>
+                                                        <span>52</span>
+                                                    </div>
+                                                </td>
+                                                <td class="py-2">
+                                                    <div class="flex space-x-1">
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-comment-dots"></i>
+                                                        </button>
+                                                        <button class="text-xs bg-gray-700 hover:bg-gray-600 p-1 rounded">
+                                                            <i class="fas fa-cog"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- Secret Rolls -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                                <h3 class="text-xl font-bold mb-4 border-b border-gray-700 pb-2">Rolagens Secretas</h3>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <select class="bg-gray-700 rounded p-2 flex-1">
+                                            <option>Teste de Percepção (NPC)</option>
+                                            <option>Teste de Furtividade (Inimigo)</option>
+                                            <option>Teste de Enganação (NPC)</option>
+                                            <option>Resistência a Magia (NPC)</option>
+                                        </select>
+                                        <button class="ml-2 bg-purple-700 hover:bg-purple-600 p-2 rounded">
+                                            <i class="fas fa-dice-d20"></i>
+                                        </button>
+                                    </div>
+                                    <div class="bg-gray-700 p-3 rounded">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-sm">Últimas Rolagens</span>
+                                            <button class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                                Limpar
+                                            </button>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between text-sm">
+                                                <span>Percepção (Orc) - 14</span>
+                                                <span class="text-gray-400 text-xs">3 min atrás</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span>Furtividade (Nazgûl) - 22</span>
+                                                <span class="text-gray-400 text-xs">15 min atrás</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span>Persuasão (Barliman) - 8</span>
+                                                <span class="text-gray-400 text-xs">1 hr atrás</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dice Roll Modal -->
+    <div id="dice-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden flex items-center justify-center">
+        <div class="bg-gray-800 rounded-lg p-8 max-w-sm w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Resultado da Rolagem</h3>
+                <button id="close-dice-modal" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="text-center">
+                <div class="dice-result-display text-6xl font-bold mb-6 text-amber-400">0</div>
+                <div class="mb-4">
+                    <p id="dice-roll-expression" class="text-gray-400">Rolando...</p>
+                </div>
+                <button id="roll-again-btn" class="bg-amber-600 hover:bg-amber-700 px-6 py-3 rounded-lg font-bold">
+                    <i class="fas fa-redo mr-2"></i> Rolar Novamente
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Music Player (fixed at bottom) -->
+    <div id="music-player" class="hidden fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 p-3">
+        <div class="flex items-center justify-between max-w-4xl mx-auto">
+            <div class="flex items-center">
+                <img src="https://i.scdn.co/image/ab67616d00004851c08d11e3aabc6d896c7a8416" alt="Album cover" class="w-12 h-12 rounded mr-3">
+                <div>
+                    <p class="text-sm font-bold">The Shire Theme</p>
+                    <p class="text-xs text-gray-400">Howard Shore</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button class="text-gray-400 hover:text-white">
+                    <i class="fas fa-backward"></i>
+                </button>
+                <button id="play-pause-btn" class="bg-amber-600 hover:bg-amber-700 w-10 h-10 rounded-full flex items-center justify-center">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="text-gray-400 hover:text-white">
+                    <i class="fas fa-forward"></i>
+                </button>
+            </div>
+            <div class="w-1/3">
+                <div class="flex items-center">
+                    <span class="text-xs text-gray-400 mr-2">1:34</span>
+                    <div class="flex-1 bg-gray-700 rounded-full h-1">
+                        <div class="bg-amber-600 h-1 rounded-full w-1/3"></div>
+                    </div>
+                    <span class="text-xs text-gray-400 ml-2">4:12</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button class="text-gray-400 hover:text-white">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                <button id="close-music-player" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulate loading
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('welcome-portal').style.opacity = '1';
+        }, 1500);
+
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            if (html.classList.contains('dark')) {
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+            } else {
+                themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+            }
+        });
+
+        // Panel navigation
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const panels = document.querySelectorAll('.content-panel');
+        
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons
+                navButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                    btn.classList.remove('bg-amber-600');
+                });
+                
+                // Add active class to clicked button
+                button.classList.add('active');
+                button.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                button.classList.add('bg-amber-600');
+                
+                // Hide all panels
+                panels.forEach(panel => {
+                    panel.classList.add('hidden');
+                });
+                
+                // Show the selected panel
+                const panelId = button.getAttribute('data-panel') + '-panel';
+                document.getElementById(panelId).classList.remove('hidden');
+            });
+        });
+
+        // Login functionality
+        const loginButton = document.getElementById('login-button');
+        const welcomePortal = document.getElementById('welcome-portal');
+        const mainDashboard = document.getElementById('main-dashboard');
+        const userDisplay = document.getElementById('user-display');
+        
+        loginButton.addEventListener('click', () => {
+            const username = document.getElementById('username').value || 'Aventureiro';
+            userDisplay.textContent = username;
+            
+            // Hide welcome portal and show main dashboard
+            welcomePortal.style.opacity = '0';
+            setTimeout(() => {
+                welcomePortal.style.display = 'none';
+                mainDashboard.classList.remove('hidden');
+                
+                // Show dashboard panel by default
+                document.getElementById('dashboard-panel').classList.remove('hidden');
+                
+                // Check if user is GM (for demo purposes)
+                if (username.toLowerCase() === 'gandalf') {
+                    document.querySelectorAll('.gm-only').forEach(el => el.style.display = 'block');
+                }
+            }, 500);
+        });
+
+        // Dice rolling functionality
+        const diceButtons = document.querySelectorAll('.dice-btn');
+        const diceModal = document.getElementById('dice-modal');
+        const closeDiceModal = document.getElementById('close-dice-modal');
+        const diceResultDisplay = document.querySelector('.dice-result-display');
+        const diceRollExpression = document.getElementById('dice-roll-expression');
+        const rollAgainBtn = document.getElementById('roll-again-btn');
+        
+        // Global dice roll function
+        function rollDice(sides, count = 1) {
+            let total = 0;
+            let rolls = [];
+            
+            for (let i = 0; i < count; i++) {
+                const roll = Math.floor(Math.random() * sides) + 1;
+                rolls.push(roll);
+                total += roll;
+            }
+            
+            // Show modal with results
+            diceRollExpression.textContent = `${count}d${sides}: ${rolls.join(' + ')}${count > 1 ? ` = ${total}` : ''}`;
+            diceResultDisplay.textContent = total;
+            diceResultDisplay.classList.add('rolling');
+            
+            setTimeout(() => {
+                diceResultDisplay.classList.remove('rolling');
+            }, 500);
+            
+            diceModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            // Store current roll for roll again
+            rollAgainBtn.dataset.sides = sides;
+            rollAgainBtn.dataset.count = count;
+        }
+        
+        // Event listeners for dice buttons
+        diceButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const sides = parseInt(button.getAttribute('data-sides'));
+                rollDice(sides);
+            });
+        });
+        
+        // Custom dice roll
+        const rollCustomBtn = document.getElementById('roll-custom');
+        rollCustomBtn.addEventListener('click', () => {
+            const sides = parseInt(document.getElementById('dice-type').value);
+            const count = parseInt(document.getElementById('dice-count').value);
+            rollDice(sides, count);
+        });
+        
+        // Roll again button
+        rollAgainBtn.addEventListener('click', () => {
+            const sides = parseInt(rollAgainBtn.dataset.sides);
+            const count = parseInt(rollAgainBtn.dataset.count);
+            rollDice(sides, count);
+        });
+        
+        // Close dice modal
+        closeDiceModal.addEventListener('click', () => {
+            diceModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        });
+
+        // Music player functionality
+        const musicToggle = document.getElementById('music-toggle');
+        const musicPlayer = document.getElementById('music-player');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const closeMusicPlayer = document.getElementById('close-music-player');
+        let isPlaying = false;
+        
+        musicToggle.addEventListener('click', () => {
+            musicPlayer.classList.toggle('hidden');
+        });
+        
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playPauseBtn.innerHTML = isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+        });
+        
+        closeMusicPlayer.addEventListener('click', () => {
+            musicPlayer.classList.add('hidden');
+            isPlaying = false;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+        });
+
+        // Logout functionality
+        const logoutButton = document.getElementById('logout-button');
+        logoutButton.addEventListener('click', () => {
+            mainDashboard.classList.add('hidden');
+            welcomePortal.style.display = 'flex';
+            setTimeout(() => {
+                welcomePortal.style.opacity = '1';
+            }, 50);
+            
+            // Reset music player
+            musicPlayer.classList.add('hidden');
+            isPlaying = false;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+        });
+
+        // Draggable elements (for tokens)
+        const draggableElements = document.querySelectorAll('.draggable');
+        draggableElements.forEach(element => {
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            element.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                
+                // Get the mouse position
+                const rect = element.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                
+                // Set positioning
+                element.style.position = 'absolute';
+                element.style.zIndex = '1000';
+                
+                // Prevent text selection while dragging
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                // Calculate new position
+                const newX = e.clientX - offsetX;
+                const newY = e.clientY - offsetY;
+                
+                // Get parent dimensions to constrain movement
+                const parent = element.parentElement;
+                const parentRect = parent.getBoundingClientRect();
+                const elementRect = element.getBoundingClientRect();
+                
+                // Constrain within parent
+                const constrainedX = Math.max(parentRect.left, Math.min(newX, parentRect.right - elementRect.width));
+                const constrainedY = Math.max(parentRect.top, Math.min(newY, parentRect.bottom - elementRect.height));
+                
+                element.style.left = `${constrainedX - parentRect.left}px`;
+                element.style.top = `${constrainedY - parentRect.top}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        });
+
+        // Grid toggle for map
+        const gridToggle = document.getElementById('grid-toggle');
+        const mapContainer = document.querySelector('.map-container');
+        gridToggle.addEventListener('click', () => {
+            mapContainer.classList.toggle('grid-overlay');
+            
+            // For demo purposes (in a real app you'd have actual grid overlay)
+            mapContainer.style.backgroundImage = mapContainer.classList.contains('grid-overlay') ? 
+                'linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px), url(https://www.transparenttextures.com/patterns/cream-paper.png)' : 
+                'url(https://www.transparenttextures.com/patterns/cream-paper.png)';
+        });
+
+        // Show GM tools panel if user is GM
+        const checkIfGM = () => {
+            if (userDisplay.textContent.toLowerCase() === 'gandalf') {
+                document.querySelectorAll('.gm-only').forEach(el => {
+                    el.style.display = 'block';
+                });
+            }
+        };
+
+        // Initialize
+        checkIfGM();
+    </script>
+</body>
+</html>
